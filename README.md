@@ -204,31 +204,30 @@ Step 5: Execution (Agent Dispatch)
 
 ## Installation
 
-### Option A: Download ISO (Recommended)
+### Option A: Download Pre-built ISO (GitHub Releases)
 
-Download the container image from [GitHub Releases](https://github.com/Khazar-System-Distribution/khazar-distro/releases) and convert to bootable disk:
+Download the latest ISO from [GitHub Releases](https://github.com/Khazar-System-Distribution/khazar-distro/releases).
 
 ```bash
-# Download
-wget https://github.com/Khazar-System-Distribution/khazar-distro/releases/latest/download/khazaros-0.1.0-x86_64.tar.gz
-wget https://github.com/Khazar-System-Distribution/khazar-distro/releases/latest/download/build-iso.sh
-
-# Convert to bootable disk (~10GB free space required, takes ~5 min)
-bash build-iso.sh 0.1.0
-# Produces: output/khazaros-0.1.0-x86_64.raw
-
 # Write to USB
-sudo dd if=output/khazaros-0.1.0-x86_64.raw of=/dev/sdX bs=4M status=progress
+sudo dd if=khazaros.iso of=/dev/sdX bs=4M status=progress
 
-# Or test in QEMU
-qemu-system-x86_64 -m 4096 -enable-kvm -hda output/khazaros-0.1.0-x86_64.qcow2
+# Test in QEMU
+qemu-system-x86_64 -m 4096 -enable-kvm -hda khazaros.iso
 ```
 
-Or pull directly from GitHub Container Registry:
+### Option B: Build ISO Yourself (Fedora 40+)
+
+Requires Fedora 40+. Produces a complete 3-6 GB bootable ISO.
 
 ```bash
-podman pull ghcr.io/khazar-system-distribution/khazaros:latest
+git clone https://github.com/Khazar-System-Distribution/khazar-distro
+cd khazar-distro
+bash build-iso.sh
+# → khazaros-0.1.0-x86_64.iso
 ```
+
+One command. Takes ~15 minutes (downloads Fedora Silverblue base once, then caches).
 
 ### Option B: RPM Package (Existing Fedora)
 
