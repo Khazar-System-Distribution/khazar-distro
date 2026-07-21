@@ -1,4 +1,4 @@
-name: Build KhazarOS ISO
+name: Build KhazarOS Live ISO
 
 on:
   push:
@@ -10,77 +10,107 @@ permissions:
   contents: write
 
 jobs:
-  build-distro:
-    name: Build KhazarOS
+  build-iso:
+    name: Build ISO
     runs-on: ubuntu-24.04
+    container:
+      image: quay.io/fedora/fedora:40
+      options: --privileged --device /dev/loop-control
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Khazar platform
+      - name: Install build dependencies
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq gcc make
+          dnf install -y --setopt=install_weak_deps=False \
+            lorax livecd-tools spin-kickstarts \
+            gcc make git anaconda \
+            pykickstart
+
+      - name: Build Khazar binaries
+        run: |
           make sdk
           make -C sdk test
           make all
 
-      - name: Copy binaries to system overlay
+      - name: Prepare Khazar overlay
         run: |
-          mkdir -p system/usr/local/bin system/usr/lib
+          mkdir -p /tmp/khazar-overlay/bin /tmp/khazar-overlay/config /tmp/khazar-overlay/systemd
           for comp in orchestrator rule-engine policy-engine model-runtime intent-classifier; do
-            [ -f "components/$comp/ai-$comp" ] && cp "components/$comp/ai-$comp" system/usr/local/bin/
+            [ -f "components/$comp/ai-$comp" ] && cp "components/$comp/ai-$comp" /tmp/khazar-overlay/bin/
           done
           for agent in desktop package network power audio; do
-            [ -f "agents/${agent}-agent/ai-${agent}-agent" ] && cp "agents/${agent}-agent/ai-${agent}-agent" system/usr/local/bin/
+            [ -f "agents/${agent}-agent/ai-${agent}-agent" ] && cp "agents/${agent}-agent/ai-${agent}-agent" /tmp/khazar-overlay/bin/
           done
-          [ -f sdk/libai-sdk.a ] && cp sdk/libai-sdk.a system/usr/lib/
+          [ -f distro/cli/kha ] && cp distro/cli/kha /tmp/khazar-overlay/bin/
+          cp distro/configs/*.toml /tmp/khazar-overlay/config/ 2>/dev/null || true
+          cp distro/systemd/*.service distro/systemd/khazar.target /tmp/khazar-overlay/systemd/ 2>/dev/null || true
+          ls /tmp/khazar-overlay/bin/
 
-      - name: Build container image
+      - name: Build ISO with livecd-creator
         run: |
-          docker build --tag khazaros:latest -f Containerfile .
+          # Copy Khazar files to where kickstart %post can find them
+          mkdir -p /tmp/khazar-bin /tmp/khazar-config /tmp/khazar-systemd
+          cp /tmp/khazar-overlay/bin/* /tmp/khazar-bin/ 2>/dev/null || true
+          cp /tmp/khazar-overlay/config/* /tmp/khazar-config/ 2>/dev/null || true
+          cp /tmp/khazar-overlay/systemd/* /tmp/khazar-systemd/ 2>/dev/null || true
 
-      - name: Save container as tar
+          # Build the live ISO
+          livecd-creator \
+            --config=os-build/khazaros.ks \
+            --fslabel=KhazarOS \
+            --title="KhazarOS 0.1.0" \
+            --product="KhazarOS" \
+            --releasever=40 \
+            --tmpdir=/tmp/livecd \
+            --cache=/tmp/livecd-cache
+
+      - name: Find and verify ISO
         run: |
-          docker save khazaros:latest | gzip > khazaros-latest-x86_64.tar.gz
-          ls -lah khazaros-latest-x86_64.tar.gz
-          sha256sum khazaros-latest-x86_64.tar.gz > khazaros-latest-x86_64.tar.gz.sha256
+          ISO=$(find /tmp -name "*.iso" -type f 2>/dev/null | head -1)
+          if [ -z "$ISO" ]; then
+            echo "ISO not found in /tmp, checking other locations..."
+            ISO=$(find / -name "*.iso" -type f 2>/dev/null | grep -v proc | head -1)
+          fi
+          if [ -z "$ISO" ]; then
+            echo "ERROR: No ISO produced"
+            exit 1
+          fi
+          cp "$ISO" khazaros-live-x86_64.iso
+          ls -lah khazaros-live-x86_64.iso
+          sha256sum khazaros-live-x86_64.iso > khazaros-live-x86_64.iso.sha256
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           name: KhazarOS ${{ github.ref_name }}
           files: |
-            khazaros-latest-x86_64.tar.gz
-            khazaros-latest-x86_64.tar.gz.sha256
+            khazaros-live-x86_64.iso
+            khazaros-live-x86_64.iso.sha256
           body: |
             ## KhazarOS ${{ github.ref_name }}
 
-            Fedora Silverblue-based distro with built-in Khazar AI platform.
+            Bootable Fedora 40-based Live ISO with Khazar AI pre-installed.
 
             ### Download
-            - `khazaros-latest-x86_64.tar.gz` — Full container image (3+ GB)
+            - `khazaros-live-x86_64.iso` — Bootable Live ISO (~2 GB)
 
-            ### Convert to bootable disk image
+            ### Usage
             ```bash
-            # Load the container
-            docker load -i khazaros-latest-x86_64.tar.gz
+            # USB
+            sudo dd if=khazaros-live-x86_64.iso of=/dev/sdX bs=4M status=progress
 
-            # Convert to ISO (requires bootc-image-builder)
-            pip install bootc-image-builder
-            sudo bootc-image-builder --type anaconda-iso \
-              docker-daemon:khazaros:latest \
-              khazaros.iso
+            # QEMU
+            qemu-system-x86_64 -m 4096 -enable-kvm -cdrom khazaros-live-x86_64.iso
 
-            # Write to USB
-            sudo dd if=khazaros.iso of=/dev/sdX bs=4M status=progress
+            # VirtualBox
+            Create VM -> attach ISO -> boot
             ```
 
-            ### Or build from source on Fedora 40+
+            ### After Boot
             ```bash
-            git clone https://github.com/Khazar-System-Distribution/khazar-distro
-            cd khazar-distro && bash build-iso.sh
+            kha "open firefox"
+            kha status
             ```
-
-            See [README.md](README.md) and [TESTING.md](TESTING.md).
           draft: false
           prerelease: true

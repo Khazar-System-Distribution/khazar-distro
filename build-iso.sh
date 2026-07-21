@@ -1,73 +1,77 @@
 #!/bin/bash
-# KhazarOS — Build bootable ISO from source
-# 
-# This is how Pardus/Tails/Kali build their distros:
-#   1. Take a base distro (Fedora Silverblue)
-#   2. Add your packages + branding
-#   3. Build ISO
+# KhazarOS — REAL ISO Builder (Fedora 40+ host)
+# Uses livecd-creator to build a Fedora-based Live ISO
 #
-# Requirements: Fedora 40+, podman, 20GB disk
-# First run: ~20 min (downloads base image)
-# Subsequent: ~3 min (cached)
+# Requirements: Fedora 40+, root, 20GB disk
+# Install: sudo dnf install livecd-tools spin-kickstarts lorax
 
 set -e
 V="${1:-0.1.0}"
 
 echo "=============================================="
-echo "  KhazarOS v${V} — ISO Builder"
-echo "  Base: Fedora Silverblue 40"
+echo "  KhazarOS v${V} — Live ISO Builder"
+echo "  Base: Fedora 40 + GNOME + Khazar AI"
 echo "=============================================="
 echo ""
 
-# 1. Build Khazar if not already built
-if [ ! -f "components/orchestrator/ai-orchestrator" ]; then
+# 1. Install tools
+if ! command -v livecd-creator &>/dev/null; then
+    echo "[*] Installing livecd-tools..."
+    sudo dnf install -y livecd-tools spin-kickstarts lorax git
+fi
+
+# 2. Build Khazar
+if [ ! -f components/orchestrator/ai-orchestrator ]; then
     echo "[1/3] Building Khazar platform..."
     make clean &>/dev/null || true
     make all
 fi
 
-# 2. Copy binaries to system overlay
-echo "[2/3] Preparing system overlay..."
-mkdir -p system/usr/local/bin system/etc/khazar/policies system/usr/lib
+# 3. Prepare overlay
+echo "[2/3] Preparing overlay files..."
+mkdir -p /tmp/khazar-bin /tmp/khazar-config /tmp/khazar-systemd
 
 for comp in orchestrator rule-engine policy-engine model-runtime intent-classifier; do
-    cp components/$comp/ai-$comp system/usr/local/bin/ 2>/dev/null || true
+    cp components/$comp/ai-$comp /tmp/khazar-bin/ 2>/dev/null || true
 done
 for agent in desktop package network power audio; do
-    cp agents/${agent}-agent/ai-${agent}-agent system/usr/local/bin/ 2>/dev/null || true
+    cp agents/${agent}-agent/ai-${agent}-agent /tmp/khazar-bin/ 2>/dev/null || true
 done
-cp sdk/libai-sdk.a system/usr/lib/ 2>/dev/null || true
-cp distro/cli/kha system/usr/local/bin/
-chmod +x system/usr/local/bin/*
+cp distro/cli/kha /tmp/khazar-bin/ 2>/dev/null || true
+cp distro/configs/*.toml /tmp/khazar-config/ 2>/dev/null || true
+cp distro/systemd/*.service distro/systemd/khazar.target /tmp/khazar-systemd/ 2>/dev/null || true
 
-# 3. Build container + ISO
-echo "[3/3] Building container image + ISO..."
-echo "       (First run downloads Fedora Silverblue — ~3GB)"
-echo ""
+chmod +x /tmp/khazar-bin/* 2>/dev/null || true
+ls /tmp/khazar-bin/
 
-podman build --tag khazaros:${V} -f Containerfile .
+# 4. Build ISO
+echo "[3/3] Building ISO (this takes 5-10 minutes)..."
+sudo livecd-creator \
+    --config=os-build/khazaros.ks \
+    --fslabel="KhazarOS" \
+    --title="KhazarOS ${V}" \
+    --product="KhazarOS" \
+    --releasever=40 \
+    --tmpdir=/tmp/livecd \
+    --cache=/var/tmp/livecd-cache
 
-# Convert container to ISO
-if command -v bootc-image-builder &>/dev/null; then
-    sudo bootc-image-builder \
-        --type anaconda-iso \
-        --rootfs xfs \
-        localhost/khazaros:${V} \
-        khazaros-${V}-x86_64.iso
+# 5. Find ISO
+ISO=$(find /tmp -name "*.iso" -type f 2>/dev/null | head -1)
+if [ -n "$ISO" ]; then
+    cp "$ISO" "khazaros-${V}-live-x86_64.iso"
+    echo ""
+    echo "=============================================="
+    echo "  ISO READY: khazaros-${V}-live-x86_64.iso"
+    echo "  Size: $(du -h khazaros-${V}-live-x86_64.iso | cut -f1)"
+    echo "  SHA256: $(sha256sum khazaros-${V}-live-x86_64.iso | cut -d' ' -f1)"
+    echo "=============================================="
+    echo ""
+    echo "  USB:  sudo dd if=khazaros-${V}-live-x86_64.iso of=/dev/sdX bs=4M"
+    echo "  QEMU: qemu-system-x86_64 -m 4096 -enable-kvm -cdrom khazaros-${V}-live-x86_64.iso"
 else
-    echo ""
-    echo "bootc-image-builder not installed."
-    echo "Install: pip install bootc-image-builder"
-    echo ""
-    echo "Pushing to ghcr.io instead..."
-    echo "Then download ISO from GitHub Releases."
-    echo ""
-    echo "Or export as tar:"
-    podman save khazaros:${V} | gzip > khazaros-${V}-x86_64.tar.gz
-    echo "  -> khazaros-${V}-x86_64.tar.gz ($(du -h khazaros-${V}-x86_64.tar.gz | cut -f1))"
+    echo "ERROR: ISO not found. Check /tmp/ for livecd build artifacts."
+    exit 1
 fi
 
-echo ""
-echo "=============================================="
-ls -lah khazaros-* 2>/dev/null || echo "Build the distro on a Fedora 40+ machine with podman installed."
-echo "=============================================="
+# Cleanup
+sudo rm -rf /tmp/khazar-* /tmp/livecd
