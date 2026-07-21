@@ -1,4 +1,5 @@
-# Build KhazarOS bootable disk image and publish as GitHub Release
+# Build KhazarOS bootc container and publish to GitHub Container Registry
+# Full distro image. Users convert to ISO locally with one script.
 
 name: Build and Release
 
@@ -9,9 +10,10 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
-  build-iso:
+  build-container:
     runs-on: ubuntu-24.04
 
     steps:
@@ -20,85 +22,92 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc make xorriso isolinux mtools
+          sudo apt-get install -y gcc make podman qemu-user-static
 
-      - name: Build SDK
-        run: make sdk
-
-      - name: Test SDK
-        run: make -C sdk test
-
-      - name: Build all components
-        run: make all
-
-      - name: Install Khazar binaries for bundling
+      - name: Build SDK + all components
         run: |
-          mkdir -p build-iso/rootfs/usr/local/bin \
-                   build-iso/rootfs/etc/khazar/policies \
-                   build-iso/rootfs/usr/lib
-          cp sdk/libai-sdk.a build-iso/rootfs/usr/lib/
-          for comp in orchestrator rule-engine policy-engine model-runtime intent-classifier; do
-            cp components/$comp/ai-$comp build-iso/rootfs/usr/local/bin/ 2>/dev/null || true
-          done
-          for agent in desktop package network power audio; do
-            cp agents/${agent}-agent/ai-${agent}-agent build-iso/rootfs/usr/local/bin/ 2>/dev/null || true
-          done
-          cp distro/cli/kha build-iso/rootfs/usr/local/bin/
-          chmod +x build-iso/rootfs/usr/local/bin/*
-          cp distro/configs/*.toml build-iso/rootfs/etc/khazar/ 2>/dev/null || true
-          cp distro/configs/default.policy.toml build-iso/rootfs/etc/khazar/policies/ 2>/dev/null || true
+          make all
+          make -C sdk test
 
-      - name: Create bootable ISO
+      - name: Build bootc container image
         run: |
-          mkdir -p build-iso/iso/isolinux
+          podman build \
+            --tag khazaros:${GITHUB_REF_NAME#v} \
+            --tag ghcr.io/khazar-system-distribution/khazaros:${GITHUB_REF_NAME#v} \
+            --tag ghcr.io/khazar-system-distribution/khazaros:latest \
+            -f distro/bootc/Containerfile \
+            .
 
-          # ISOLINUX config
-          cat > build-iso/iso/isolinux/isolinux.cfg << 'EOF'
-          DEFAULT khazar
-          PROMPT 0
-          TIMEOUT 50
+      - name: Push to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            podman login ghcr.io -u ${{ github.actor }} --password-stdin
+          podman push ghcr.io/khazar-system-distribution/khazaros:${GITHUB_REF_NAME#v}
+          podman push ghcr.io/khazar-system-distribution/khazaros:latest
 
-          LABEL khazar
-            MENU LABEL KhazarOS (Live)
-            KERNEL /boot/vmlinuz
-            APPEND initrd=/boot/initrd root=live:CDLABEL=KhazarOS ro quiet rhgb
+      - name: Export as tarball
+        run: |
+          podman save khazaros:${GITHUB_REF_NAME#v} | \
+            gzip > khazaros-${GITHUB_REF_NAME#v}-x86_64.tar.gz
+          ls -lah khazaros-*.tar.gz
 
-          LABEL install
-            MENU LABEL Install KhazarOS
-            KERNEL /boot/vmlinuz
-            APPEND initrd=/boot/initrd inst.stage2=hd:LABEL=KhazarOS ro quiet
+      - name: Create ISO-conversion script
+        run: |
+          cat > build-iso.sh << 'SCRIPT'
+          #!/bin/bash
+          # Convert KhazarOS container to bootable disk image
+          # Usage: bash build-iso.sh [version]
+          set -e
+          V="${1:-latest}"
+          IMG="khazaros-${V}-x86_64"
 
-          LABEL rescue
-            MENU LABEL Rescue mode
-            KERNEL /boot/vmlinuz
-            APPEND initrd=/boot/initrd rescue
-          EOF
+          echo "=== KhazarOS ISO Builder ==="
 
-          # Build ISO with xorriso
-          xorriso -as mkisofs \
-            -V "KhazarOS" \
-            -J -R -l \
-            -iso-level 3 \
-            -o khazaros-${GITHUB_REF_NAME#v}-x86_64.iso \
-            -b isolinux/isolinux.bin \
-            -c isolinux/boot.cat \
-            -no-emul-boot \
-            -boot-load-size 4 \
-            -boot-info-table \
-            -eltorito-alt-boot \
-            -e images/efiboot.img \
-            -no-emul-boot \
-            -isohybrid-gpt-basdat \
-            build-iso/iso/ 2>/dev/null || \
-          xorriso -as mkisofs \
-            -V "KhazarOS" \
-            -J -R -l \
-            -o khazaros-${GITHUB_REF_NAME#v}-x86_64.iso \
-            build-iso/iso/ 2>/dev/null || \
-          echo "xorriso unavailable — building tarball instead" && \
-          tar -czf khazaros-${GITHUB_REF_NAME#v}-x86_64.tar.gz -C build-iso/rootfs .
+          # Load container
+          if [ -f "khazaros-${V}-x86_64.tar.gz" ]; then
+              echo "[1/3] Loading container..."
+              podman load -i "khazaros-${V}-x86_64.tar.gz"
+          else
+              echo "[1/3] Pulling from ghcr.io..."
+              podman pull "ghcr.io/khazar-system-distribution/khazaros:${V}"
+          fi
 
-          ls -lah khazaros-* 2>/dev/null || true
+          # Build disk image with bootc-image-builder
+          echo "[2/3] Building bootable disk (this takes ~5 minutes)..."
+          mkdir -p output
+
+          if command -v bootc-image-builder &>/dev/null; then
+              bootc-image-builder \
+                  --type qcow2 \
+                  --rootfs xfs \
+                  "ghcr.io/khazar-system-distribution/khazaros:${V}" \
+                  "output/${IMG}.qcow2"
+          else
+              echo "bootc-image-builder not found. Install it:"
+              echo "  pip install bootc-image-builder"
+              echo ""
+              echo "Or use bootc directly (requires writing to a disk):"
+              echo "  podman run --rm --privileged -v /dev/sdX:/dev/sdX \\"
+              echo "    ghcr.io/khazar-system-distribution/khazaros:${V} \\"
+              echo "    bootc install /dev/sdX"
+              exit 1
+          fi
+
+          # Convert to raw (dd-able to USB)
+          echo "[3/3] Converting to raw..."
+          if [ -f "output/${IMG}.qcow2" ]; then
+              qemu-img convert -f qcow2 -O raw \
+                  "output/${IMG}.qcow2" "output/${IMG}.raw"
+              echo "  [+] output/${IMG}.raw — Write to USB with dd"
+              echo "  [+] output/${IMG}.qcow2 — Use in QEMU/VirtualBox"
+          fi
+
+          echo ""
+          echo "=== Done ==="
+          echo "USB:  sudo dd if=output/${IMG}.raw of=/dev/sdX bs=4M status=progress"
+          echo "QEMU: qemu-system-x86_64 -m 4096 -enable-kvm -hda output/${IMG}.qcow2"
+          SCRIPT
+          chmod +x build-iso.sh
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -107,37 +116,44 @@ jobs:
           body: |
             ## KhazarOS ${{ github.ref_name }}
 
-            AI-powered Linux desktop based on Fedora Silverblue.
+            AI-powered Linux desktop based on Fedora Silverblue 40.
 
-            ### System
-            - Base: Fedora Silverblue 40 (immutable, atomic updates)
-            - Shell: GNOME 46 with Khazar Dark theme
-            - AI: 11 daemon services (systemd)
+            ### What's included
+            - Fedora Silverblue 40 base (immutable, atomic updates)
+            - GNOME 46 with Khazar Dark theme
+            - Khazar AI platform (11 daemon services)
+            - 5 AI agents (desktop, package, network, power, audio)
 
             ### Download
-            - `khazaros-${{ github.ref_name }}-x86_64.iso` — Bootable ISO
-            - `khazaros-${{ github.ref_name }}-x86_64.tar.gz` — Binary archive (for existing Fedora)
+            - `khazaros-${{ github.ref_name }}-x86_64.tar.gz` — Container image (3+ GB)
+            - `build-iso.sh` — Script to convert container to bootable disk image
 
-            ### Install
+            ### Quick Start
             ```bash
-            # USB
-            sudo dd if=khazaros-${{ github.ref_name }}-x86_64.iso of=/dev/sdX bs=4M status=progress
+            # Download + extract
+            wget https://github.com/Khazar-System-Distribution/khazar-distro/releases/download/${{ github.ref_name }}/khazaros-${{ github.ref_name }}-x86_64.tar.gz
+            wget https://github.com/Khazar-System-Distribution/khazar-distro/releases/download/${{ github.ref_name }}/build-iso.sh
 
-            # QEMU
-            qemu-system-x86_64 -m 4096 -enable-kvm -hda khazaros-${{ github.ref_name }}-x86_64.iso
+            # Convert to bootable disk (requires ~10GB free)
+            bash build-iso.sh ${{ github.ref_name }}
+            # Produces: output/khazaros-${{ github.ref_name }}-x86_64.raw
 
-            # RPM (Fedora)
-            sudo rpm-ostree install khazar
+            # Write to USB
+            sudo dd if=output/khazaros-${{ github.ref_name }}-x86_64.raw of=/dev/sdX bs=4M status=progress
+
+            # Or test in QEMU
+            qemu-system-x86_64 -m 4096 -enable-kvm -hda output/khazaros-${{ github.ref_name }}-x86_64.qcow2
             ```
 
-            ### After Boot
+            ### Pull from Container Registry
             ```bash
-            kha "open firefox"
-            kha status
+            podman pull ghcr.io/khazar-system-distribution/khazaros:${{ github.ref_name }}
+            # Or: podman pull ghcr.io/khazar-system-distribution/khazaros:latest
             ```
 
             See [README.md](README.md) and [TESTING.md](TESTING.md) for full documentation.
           files: |
-            khazaros-*
+            khazaros-${{ github.ref_name }}-x86_64.tar.gz
+            build-iso.sh
           draft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}

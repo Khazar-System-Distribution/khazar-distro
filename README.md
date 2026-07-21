@@ -206,17 +206,29 @@ Step 5: Execution (Agent Dispatch)
 
 ### Option A: Download ISO (Recommended)
 
-Download the latest ISO from [GitHub Releases](https://github.com/Khazar-System-Distribution/khazar/releases).
+Download the container image from [GitHub Releases](https://github.com/Khazar-System-Distribution/khazar-distro/releases) and convert to bootable disk:
 
 ```bash
+# Download
+wget https://github.com/Khazar-System-Distribution/khazar-distro/releases/latest/download/khazaros-0.1.0-x86_64.tar.gz
+wget https://github.com/Khazar-System-Distribution/khazar-distro/releases/latest/download/build-iso.sh
+
+# Convert to bootable disk (~10GB free space required, takes ~5 min)
+bash build-iso.sh 0.1.0
+# Produces: output/khazaros-0.1.0-x86_64.raw
+
 # Write to USB
-dd if=khazaros-0.1.0-x86_64.iso of=/dev/sdX bs=4M status=progress
+sudo dd if=output/khazaros-0.1.0-x86_64.raw of=/dev/sdX bs=4M status=progress
 
 # Or test in QEMU
-qemu-system-x86_64 -m 4096 -cpu host -enable-kvm -hda khazaros-0.1.0-x86_64.iso
+qemu-system-x86_64 -m 4096 -enable-kvm -hda output/khazaros-0.1.0-x86_64.qcow2
 ```
 
-See [TESTING.md](TESTING.md) for VirtualBox, QEMU, and hardware testing guides.
+Or pull directly from GitHub Container Registry:
+
+```bash
+podman pull ghcr.io/khazar-system-distribution/khazaros:latest
+```
 
 ### Option B: RPM Package (Existing Fedora)
 
