@@ -1,58 +1,73 @@
 #!/bin/bash
-# KhazarOS — REAL ISO Builder (run on Fedora 40+)
-# Produces: khazaros.iso (bootable, 3-6 GB)
+# KhazarOS — Build bootable ISO from source
+# 
+# This is how Pardus/Tails/Kali build their distros:
+#   1. Take a base distro (Fedora Silverblue)
+#   2. Add your packages + branding
+#   3. Build ISO
 #
-# Requirements: Fedora 40+, podman, 20GB free disk
-# Install: sudo dnf install podman && pip install bootc-image-builder
+# Requirements: Fedora 40+, podman, 20GB disk
+# First run: ~20 min (downloads base image)
+# Subsequent: ~3 min (cached)
 
 set -e
-
-VERSION="${1:-0.1.0}"
-IMAGE="khazaros:${VERSION}"
-ISO="khazaros-${VERSION}-x86_64.iso"
+V="${1:-0.1.0}"
 
 echo "=============================================="
-echo "  KhazarOS ISO Builder v${VERSION}"
-echo "  Building REAL bootable distro image"
-echo "  Time: ~15-20 minutes (first run downloads Fedora)"
+echo "  KhazarOS v${V} — ISO Builder"
+echo "  Base: Fedora Silverblue 40"
 echo "=============================================="
 echo ""
 
-# 1. Build container
-echo "[1/4] Building container image (this downloads Fedora Silverblue)..."
-podman build --tag "$IMAGE" -f distro/bootc/Containerfile .
-
-# 2. Install bootc-image-builder if needed
-if ! command -v bootc-image-builder &>/dev/null; then
-    echo "[*] Installing bootc-image-builder..."
-    pip install --user bootc-image-builder
-    export PATH="$HOME/.local/bin:$PATH"
+# 1. Build Khazar if not already built
+if [ ! -f "components/orchestrator/ai-orchestrator" ]; then
+    echo "[1/3] Building Khazar platform..."
+    make clean &>/dev/null || true
+    make all
 fi
 
-# 3. Build ISO
-echo "[2/4] Building bootable ISO (requires root)..."
-sudo -E "$HOME/.local/bin/bootc-image-builder" \
-    --type iso \
-    localhost/"$IMAGE" \
-    "$ISO"
+# 2. Copy binaries to system overlay
+echo "[2/3] Preparing system overlay..."
+mkdir -p system/usr/local/bin system/etc/khazar/policies system/usr/lib
 
-# 4. Verify
-echo "[3/4] Verifying ISO..."
-ls -lah "$ISO"
-echo ""
-echo "SHA256: $(sha256sum "$ISO" | cut -d' ' -f1)"
+for comp in orchestrator rule-engine policy-engine model-runtime intent-classifier; do
+    cp components/$comp/ai-$comp system/usr/local/bin/ 2>/dev/null || true
+done
+for agent in desktop package network power audio; do
+    cp agents/${agent}-agent/ai-${agent}-agent system/usr/local/bin/ 2>/dev/null || true
+done
+cp sdk/libai-sdk.a system/usr/lib/ 2>/dev/null || true
+cp distro/cli/kha system/usr/local/bin/
+chmod +x system/usr/local/bin/*
+
+# 3. Build container + ISO
+echo "[3/3] Building container image + ISO..."
+echo "       (First run downloads Fedora Silverblue — ~3GB)"
 echo ""
 
-# 5. Done
+podman build --tag khazaros:${V} -f Containerfile .
+
+# Convert container to ISO
+if command -v bootc-image-builder &>/dev/null; then
+    sudo bootc-image-builder \
+        --type anaconda-iso \
+        --rootfs xfs \
+        localhost/khazaros:${V} \
+        khazaros-${V}-x86_64.iso
+else
+    echo ""
+    echo "bootc-image-builder not installed."
+    echo "Install: pip install bootc-image-builder"
+    echo ""
+    echo "Pushing to ghcr.io instead..."
+    echo "Then download ISO from GitHub Releases."
+    echo ""
+    echo "Or export as tar:"
+    podman save khazaros:${V} | gzip > khazaros-${V}-x86_64.tar.gz
+    echo "  -> khazaros-${V}-x86_64.tar.gz ($(du -h khazaros-${V}-x86_64.tar.gz | cut -f1))"
+fi
+
+echo ""
 echo "=============================================="
-echo "  ISO READY: $ISO"
+ls -lah khazaros-* 2>/dev/null || echo "Build the distro on a Fedora 40+ machine with podman installed."
 echo "=============================================="
-echo ""
-echo "  Test in QEMU:"
-echo "    qemu-system-x86_64 -m 4096 -enable-kvm -hda $ISO"
-echo ""
-echo "  Write to USB:"
-echo "    sudo dd if=$ISO of=/dev/sdX bs=4M status=progress"
-echo ""
-echo "  VirtualBox:"
-echo "    Create VM -> Use existing disk -> $ISO"

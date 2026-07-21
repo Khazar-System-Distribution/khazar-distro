@@ -1,4 +1,4 @@
-name: Build KhazarOS (Universal Blue)
+name: Build KhazarOS ISO (Universal Blue)
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: '0 0 * * 0'  # Weekly rebuild
+    - cron: '0 0 * * 0'
   workflow_dispatch:
 
 permissions:
@@ -14,117 +14,89 @@ permissions:
   packages: write
 
 jobs:
-  build-iso:
-    name: Build ISO
+  build-distro:
+    name: Build KhazarOS
     runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Maximize build space
-        uses: easimon/maximize-build-space@v1
-        with:
-          root-reserve-mb: 4096
-          swap-size-mb: 1024
-          remove-dotnet: 'true'
-          remove-android: 'true'
-
-      - name: Install build tools
+      - name: Free disk space
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc make podman qemu-user-static
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          df -h /
 
-      - name: Build Khazar binaries
+      - name: Build Khazar platform
         run: |
+          sudo apt-get update && sudo apt-get install -y gcc make
           make sdk
           make -C sdk test
           make all
 
-      - name: Copy binaries to staging
+      - name: Copy binaries to system overlay
         run: |
-          mkdir -p staging/usr/local/bin staging/etc/khazar/policies staging/usr/lib
+          mkdir -p system/usr/local/bin system/etc/khazar/policies system/usr/lib
           for comp in orchestrator rule-engine policy-engine model-runtime intent-classifier; do
-            bin="ai-$comp"
-            [ -f "components/$comp/$bin" ] && cp "components/$comp/$bin" staging/usr/local/bin/
+            cp components/$comp/ai-$comp system/usr/local/bin/ 2>/dev/null || true
           done
           for agent in desktop package network power audio; do
-            b="ai-${agent}-agent"
-            [ -f "agents/${agent}-agent/$b" ] && cp "agents/${agent}-agent/$b" staging/usr/local/bin/
+            cp agents/${agent}-agent/ai-${agent}-agent system/usr/local/bin/ 2>/dev/null || true
           done
-          cp sdk/libai-sdk.a staging/usr/lib/ 2>/dev/null || true
-          cp distro/cli/kha staging/usr/local/bin/
-          cp distro/configs/*.toml staging/etc/khazar/ 2>/dev/null || true
-          cp distro/configs/default.policy.toml staging/etc/khazar/policies/ 2>/dev/null || true
-          chmod +x staging/usr/local/bin/*
+          cp sdk/libai-sdk.a system/usr/lib/ 2>/dev/null || true
 
-      - name: Build OCI container image
+      - name: Build container image
+        uses: ublue-os/builder@v1
+        with:
+          image_name: khazaros
+          image_tag: latest
+          push_to_registry: true
+          registry: ghcr.io
+          registry_user: ${{ github.actor }}
+          registry_password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate ISO
         run: |
-          podman build \
-            --tag khazaros:latest \
-            -f distro/bootc/Containerfile \
-            .
+          pip install bootc-image-builder
+          sudo ~/.local/bin/bootc-image-builder \
+            --type anaconda-iso \
+            ghcr.io/${{ github.repository_owner }}/khazaros:latest \
+            khazaros-latest-x86_64.iso
 
-      - name: Install bootc-image-builder
-        run: pip install --user bootc-image-builder
-
-      - name: Build bootable ISO disk image
-        run: |
-          mkdir -p output
-          sudo -E ~/.local/bin/bootc-image-builder \
-            --type qcow2 \
-            --rootfs xfs \
-            --local localhost/khazaros:latest \
-            output/khazaros.qcow2
-
-          # Convert qcow2 to raw (dd-able to USB)
-          qemu-img convert -f qcow2 -O raw \
-            output/khazaros.qcow2 output/khazaros.raw
-
-          ls -lah output/
-
-      - name: Generate checksums
-        run: |
-          cd output
-          sha256sum khazaros.raw khazaros.qcow2 > SHA256SUMS
-          cat SHA256SUMS
+      - name: Checksum
+        run: sha256sum khazaros-latest-x86_64.iso > khazaros-latest-x86_64.iso.sha256
 
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
         with:
-          name: khazaros-disk-images
+          name: khazaros-iso
           path: |
-            output/khazaros.raw
-            output/khazaros.qcow2
-            output/SHA256SUMS
+            khazaros-latest-x86_64.iso
+            khazaros-latest-x86_64.iso.sha256
 
-      - name: Create GitHub Release (tags only)
+      - name: Release (on tag)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
           name: KhazarOS ${{ github.ref_name }}
+          files: |
+            khazaros-latest-x86_64.iso
+            khazaros-latest-x86_64.iso.sha256
           body: |
             ## KhazarOS ${{ github.ref_name }}
 
-            Complete bootable disk image. Fedora Silverblue + Khazar AI.
+            Complete Fedora Silverblue-based distro with Khazar AI.
 
-            ### Downloads
-            - `khazaros.raw` — Raw disk image (write to USB with dd)
-            - `khazaros.qcow2` — QEMU/VirtualBox image
+            ### Download
+            - `khazaros-latest-x86_64.iso` — Bootable installer ISO
 
-            ### Quick Start
+            ### Install
             ```bash
-            # USB install
-            sudo dd if=khazaros.raw of=/dev/sdX bs=4M status=progress
-
-            # QEMU test
-            qemu-system-x86_64 -m 4096 -enable-kvm -hda khazaros.qcow2
-
-            # VirtualBox
-            qemu-img convert -f qcow2 -O vdi khazaros.qcow2 khazaros.vdi
+            sudo dd if=khazaros-latest-x86_64.iso of=/dev/sdX bs=4M status=progress
             ```
-          files: |
-            output/khazaros.raw
-            output/khazaros.qcow2
-            output/SHA256SUMS
+
+            ### Test in QEMU
+            ```bash
+            qemu-system-x86_64 -m 4096 -enable-kvm -hda khazaros-latest-x86_64.iso
+            ```
           draft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
