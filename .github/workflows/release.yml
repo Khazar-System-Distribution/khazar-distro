@@ -31,8 +31,9 @@ jobs:
       - name: Download Fedora 40 Live ISO
         run: |
           curl -L -o fedora.iso \
-            "https://download.fedoraproject.org/pub/fedora/linux/releases/40/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-40-1.14.iso"
+            "https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/40/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-40-1.14.iso"
           ls -lah fedora.iso
+          file fedora.iso
 
       - name: Extract and inject Khazar
         run: |
