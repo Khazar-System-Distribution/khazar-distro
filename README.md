@@ -1,91 +1,91 @@
 <p align="center">
-  <img src="distro/branding/khazar-logo.png" width="160" alt="KhazarOS Logo">
+  <img src="distro/branding/khazar-logo.png" width="160" alt="KhazarOS">
 </p>
 
 <h1 align="center">KhazarOS</h1>
-<p align="center"><strong>AI-Powered Linux Desktop</strong><br>
-<sub>Fedora Silverblue · GNOME · C11 · systemd</sub></p>
+<p align="center"><strong>AI-Powered Linux Desktop — Fedora Silverblue + Local AI</strong></p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-blue" alt="GPLv3"></a>
-  <img src="https://img.shields.io/badge/language-C11-%23e94560" alt="C11">
-  <img src="https://img.shields.io/badge/build-0_errors-success" alt="0 errors">
-  <img src="https://img.shields.io/badge/tests-94%2B-brightgreen" alt="94+ tests">
-  <img src="https://img.shields.io/badge/platform-Linux%20x86__64-orange" alt="x86_64">
-  <img src="https://img.shields.io/badge/Silverblue-immutable-blueviolet" alt="Silverblue">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-blue"></a>
+  <img src="https://img.shields.io/badge/language-C11-e94560">
+  <img src="https://img.shields.io/badge/build-0_errors-success">
+  <img src="https://img.shields.io/badge/tests-94+-brightgreen">
+  <img src="https://img.shields.io/badge/arch-x86__64-orange">
+  <a href="https://github.com/Khazar-System-Distribution/khazar/releases"><img src="https://img.shields.io/badge/download-ISO-blueviolet"></a>
 </p>
 
 <hr>
 
-<h3 align="center">"firefox aç" · "wifi söndür" · "səs artır" · "sistemi yenilə"</h3>
-<p align="center">Kompüteri səslə və ya mətnlə idarə edin.<br>
-Azərbaycan türkcəsi + İngilis dəstəyi. Tam açıq qaynaq. Offline işləyir.</p>
+<h3 align="center">"open firefox" — "turn off wifi" — "volume up" — "update system"</h3>
+<p align="center">Control your desktop with natural language. English and Azerbaijani Turkish support. Fully open source. Works offline.</p>
 
 ---
 
-## Niyə KhazarOS?
+## What is KhazarOS?
 
-| Problem | KhazarOS Həlli |
-|---------|---------------|
-| Terminal istifadəsi çətindir | Təbii dildə yaz: `kha "firefox aç"` |
-| Kompüter konfiqurasiyası qarışıqdır | AI sənin yerinə idarə edir |
-| Səsli köməkçilər internet tələb edir | Tamamilə offline, lokal AI model |
-| Mövcud AI-lər qapalı qaynaqdır | GPLv3 — hər sətir kod açıqdır |
-| Mövcud AI-lər yalnız İngiliscədir | Azərbaycan türkcəsi + İngilis |
-| Təhlükəsizlik sonradan düşünülür | Policy Engine — hər əmr icazədən keçir |
+KhazarOS is an AI-native Linux distribution built on Fedora Silverblue. It replaces manual system configuration with natural language commands — you type (or speak) what you want, and KhazarOS executes it.
 
-**KhazarOS digər həllərdən nə ilə fərqlənir:**
+Five core principles:
 
-| Xüsusiyyət | KhazarOS | Windows Copilot | macOS Siri | Ubuntu |
-|-----------|----------|----------------|------------|--------|
-| Açıq qaynaq | ✅ GPLv3 | ❌ | ❌ | ✅ |
-| Offline AI | ✅ Local GGUF | ❌ Cloud | ❌ Cloud | — |
-| Türkcə dəstək | ✅ Azərbaycan | ⚠️ Qismən | ⚠️ | — |
-| Təhlükəsizlik qatı | ✅ Policy Engine | ❌ | ❌ | ❌ |
-| İmmutable OS | ✅ rpm-ostree | ❌ | ❌ | ❌ |
-| İstifadəçi interfeysi | GNOME Shell | Windows | macOS | GNOME |
-| Səsli əmr | ✅ (gələcək) | ✅ | ✅ | ❌ |
+| Principle | How KhazarOS delivers it |
+|-----------|--------------------------|
+| **Privacy-first** | All AI inference runs locally. No cloud dependency. |
+| **Fully open source** | GPLv3. Every line of code is public. |
+| **Multilingual** | English and Azerbaijani Turkish. Extensible. |
+| **Security by design** | Policy Engine validates every action before execution. |
+| **Immutable** | Fedora Silverblue base — atomic updates, rollback safety. |
+
+### Comparison
+
+| Feature | KhazarOS | Windows Copilot | macOS Siri | Stock Fedora |
+|---------|----------|----------------|------------|-------------|
+| Open source | GPLv3 | Closed | Closed | GPL |
+| Offline AI | Local GGUF | Cloud only | Cloud only | None |
+| Turkish support | Native | Partial | Partial | Basic |
+| Security layer | Policy Engine | None | None | None |
+| Immutable OS | rpm-ostree | No | No | Optional |
+| Voice control | Planned | Yes | Yes | None |
+| Package manager | apt/pacman | winget | brew | dnf |
 
 ---
 
-## Demo
+## Quick Demo
 
 ```bash
-$ kha "firefox aç"
+$ kha "open firefox"
   Status: success
   Result: opened firefox
 
-$ kha "wifi söndür"
+$ kha "turn off wifi"
   Status: success
-  Result: WiFi interface disabled
+  Result: WiFi disabled
 
-$ kha "səs artır"
+$ kha "volume up"
   Status: success
   Result: volume +5%
 
-$ kha "sistemi yenilə"
+$ kha "update system"
   Status: success
-  Result: apt update && apt upgrade
+  Result: system packages updated
 
-$ kha "shutdown"
+$ kha shutdown
   Status: error
-  Error: POLICY_DENIED — system shutdown requires policy check
+  Error: POLICY_DENIED — requires policy check
 
 $ kha status
-  orchestrator       ● active
-  rule-engine        ● active
-  policy-engine      ● active
-  intent-classifier  ○ inactive (no LLM model)
-  desktop-agent      ● active
-  package-agent      ● active
-  network-agent      ● active
-  power-agent        ● active
-  audio-agent        ● active
+  orchestrator       active
+  rule-engine        active
+  policy-engine      active
+  desktop-agent      active
+  package-agent      active
+  network-agent      active
+  power-agent        active
+  audio-agent        active
 ```
 
 ---
 
-## Arxitektura
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -98,7 +98,7 @@ $ kha status
 │  │  Panel AI  │          │  │  Tier 0 │   │   Tier 1     │  │   │
 │  │  Icon  ────┼──────────┼─►│  Rule   │   │  Classifier  │  │   │
 │  │            │          │  │  Engine │──►│  (LLM)       │  │   │
-│  │  Ctrl+     │          │  │ 49 test │   │  mock+llama  │  │   │
+│  │  Ctrl+     │          │  │ 31 int. │   │  mock+llama  │  │   │
 │  │  Space ────┼──────────┼─►└────┬────┘   └──────┬───────┘  │   │
 │  │            │          │       │                 │          │   │
 │  └────────────┘          │  ┌────▼─────────────────▼──────┐  │   │
@@ -107,7 +107,7 @@ $ kha status
 │                          │  └────┬──────────────┬─────────┘  │   │
 │                          │       │              │             │   │
 │                          │  ┌────▼────┐   ┌─────▼────────┐  │   │
-│                          │  │ Policy  │   │   5 Agent    │  │   │
+│                          │  │ Policy  │   │   5 Agents   │  │   │
 │                          │  │ Engine  │   │  Desktop     │  │   │
 │                          │  │ 13 rule │   │  Package     │  │   │
 │                          │  │ ALLOW/  │   │  Network     │  │   │
@@ -116,230 +116,217 @@ $ kha status
 │                          │                 └──────────────┘  │   │
 │                          │  ┌──────────────────────────────┐ │   │
 │                          │  │     Model Runtime            │ │   │
-│                          │  │  GGUF + llama.cpp inference   │ │   │
+│                          │  │  GGUF + llama.cpp             │ │   │
 │                          │  └──────────────────────────────┘ │   │
 │                          └───────────────────────────────────┘   │
 │                                                                  │
-│  ┌─────────────────────────────────────────────────────────────┐ │
-│  │  Baza:  Fedora Silverblue 40 (rpm-ostree, atomic, immutable) │ │
-│  │  Build: podman → bootc → ISO                                 │ │
-│  └─────────────────────────────────────────────────────────────┘ │
+│  Base: Fedora Silverblue 40 (rpm-ostree, atomic updates)         │
+│  Build: podman -> bootc -> ISO                                   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Tam Pipeline (5 addım)
+## Pipeline (5-Stage Flow)
 
 ```
-Addım 1: İstifadəçi sorğusu
-    $ kha "firefox aç"
-    → JSON → Unix Socket → Orchestrator
+Step 1: User Query
+    $ kha "open firefox"
+    -> JSON -> Unix Socket -> Orchestrator
 
-Addım 2: Intent təyini (Tier 0)
-    Rule Engine: 31 intent, 5 mərhələ (cache→regex→token→intent→alias)
-    "firefox aç" → open_application, target=firefox
-    UNKNOWN → Tier 1 (LLM Classifier)
+Step 2: Intent Resolution (Tier 0)
+    Rule Engine: 31 intents, 5 stages (cache -> regex -> token -> intent -> alias)
+    "open firefox" -> open_application, target=firefox
+    UNKNOWN -> Tier 1 (LLM Classifier)
 
-Addım 3: Agent tapma (Registry)
-    capability: open_application → agent: desktop-agent
+Step 3: Agent Discovery (Registry)
+    capability: open_application -> agent: desktop-agent
     socket: /run/khazar/desktop-agent.sock
 
-Addım 4: Təhlükəsizlik yoxlaması (Policy Engine)
+Step 4: Security Check (Policy Engine)
     agent=desktop-agent, cap=open_application
-    → qayda: [rule.allow_desktop] priority=10 → ALLOW
-    → cavab: "application control allowed"
+    -> rule: [rule.allow_desktop] priority=10 -> ALLOW
 
-Addım 5: İcra (Agent Dispatch)
-    Orchestrator → desktop-agent socket → fork+exec firefox
-    → Cavab: {"status":"success","message":"opened firefox"}
+Step 5: Execution (Agent Dispatch)
+    Orchestrator -> desktop-agent socket -> fork+exec firefox
+    -> Response: {"status":"success","message":"opened firefox"}
 ```
 
-## Dəstəklənən Əmrlər (31 intent)
+## Supported Commands (31 Intents)
 
-### Tətbiq İdarəsi
-| Əmr nümunəsi | Intent | Agent |
-|-------------|--------|-------|
-| `firefox aç` | open_application | desktop-agent |
-| `telegram bağla` | close_application | desktop-agent |
-| `pəncərə böyüt` | window_maximize | desktop-agent |
+### Application Control
+| Command | Intent | Agent |
+|---------|--------|-------|
+| `open firefox` | open_application | desktop-agent |
+| `close telegram` | close_application | desktop-agent |
+| `maximize window` | window_maximize | desktop-agent |
 
-### Paket İdarəsi
-| Əmr nümunəsi | Intent | Agent |
-|-------------|--------|-------|
-| `steam quraşdır` | install_package | package-agent |
-| `vlc sil` | remove_package | package-agent |
-| `firefox ara` | search_package | package-agent |
-| `sistemi yenilə` | system_update | package-agent |
+### Package Management
+| Command | Intent | Agent |
+|---------|--------|-------|
+| `install steam` | install_package | package-agent |
+| `remove vlc` | remove_package | package-agent |
+| `search firefox` | search_package | package-agent |
+| `update system` | system_update | package-agent |
 
-### Şəbəkə
-| Əmr nümunəsi | Intent | Agent |
-|-------------|--------|-------|
-| `wifi aç` | network_enable | network-agent |
-| `wifi bağla` | network_disable | network-agent |
-| `şəbəkə durumu` | network_status | network-agent |
+### Network
+| Command | Intent | Agent |
+|---------|--------|-------|
+| `wifi on` | network_enable | network-agent |
+| `wifi off` | network_disable | network-agent |
+| `network status` | network_status | network-agent |
 
-### Enerji
-| Əmr nümunəsi | Intent | Agent |
-|-------------|--------|-------|
-| `söndür` | system_shutdown | power-agent |
-| `yenidən başlat` | system_reboot | power-agent |
-| `yuxu` | system_suspend | power-agent |
-| `kilidlə` | system_lock | power-agent |
-| `çıxış` | system_logout | power-agent |
+### Power
+| Command | Intent | Agent |
+|---------|--------|-------|
+| `shutdown` | system_shutdown | power-agent |
+| `reboot` | system_reboot | power-agent |
+| `sleep` | system_suspend | power-agent |
+| `lock screen` | system_lock | power-agent |
+| `logout` | system_logout | power-agent |
 
 ### Audio
-| Əmr nümunəsi | Intent | Agent |
-|-------------|--------|-------|
-| `səs artır` | volume_up | audio-agent |
-| `səs azalt` | volume_down | audio-agent |
-| `səssiz` | volume_mute | audio-agent |
+| Command | Intent | Agent |
+|---------|--------|-------|
+| `volume up` | volume_up | audio-agent |
+| `volume down` | volume_down | audio-agent |
+| `mute` | volume_mute | audio-agent |
 
-### Ekran + Fayl + Digər
-| Əmr nümunəsi | Intent | Agent |
-|-------------|--------|-------|
-| `ekran görüntüsü` | screenshot | — |
-| `sənədləri aç` | file_open | — |
-| `fayl tap` | file_search | — |
-| `parlaqlıq artır` | brightness_up | — |
+### Display + Files + Other
+| Command | Intent |
+|---------|--------|
+| `screenshot` | screenshot |
+| `open documents` | file_open |
+| `search file config` | file_search |
+| `brightness up` | brightness_up |
 
-> **Cəmi 31 intent** — hamısı Tier 0 ilə tanınır. Bütün mərhələlər 1ms-dən az müddətdə işləyir.
+> **31 intents total** — all resolved at Tier 0 with sub-millisecond latency.
 
 ---
 
-## Quraşdırma
+## Installation
 
-### Yol A: RPM Paketi (Fedora istifadəçiləri)
+### Option A: Download ISO (Recommended)
+
+Download the latest ISO from [GitHub Releases](https://github.com/Khazar-System-Distribution/khazar/releases).
 
 ```bash
-# RPM qur
-rpmbuild -ba distro/rpm/khazar.spec
+# Write to USB
+dd if=khazaros-0.1.0-x86_64.iso of=/dev/sdX bs=4M status=progress
 
-# rpm-ostree ilə quraşdır (Silverblue)
+# Or test in QEMU
+qemu-system-x86_64 -m 4096 -cpu host -enable-kvm -hda khazaros-0.1.0-x86_64.iso
+```
+
+See [TESTING.md](TESTING.md) for VirtualBox, QEMU, and hardware testing guides.
+
+### Option B: RPM Package (Existing Fedora)
+
+```bash
+rpmbuild -ba distro/rpm/khazar.spec
 rpm-ostree install khazar-0.1.0-1.fc40.x86_64.rpm
 systemctl reboot
 systemctl enable khazar.target --now
 ```
 
-### Yol B: KhazarOS ISO (Sıfırdan)
+### Option C: Build from Source
 
 ```bash
 git clone https://github.com/Khazar-System-Distribution/khazar
 cd khazar
-
-# ISO yarat
-make -C distro build-iso
-# → distro/iso/output/khazaros-0.1.0.iso
-
-# USB-yə yaz
-make -C distro flash DISK=/dev/sdX
-
-# QEMU-da test
-make -C distro test-qemu
-```
-
-### Yol C: Manual (Mövcud Linux-a)
-
-```bash
-git clone https://github.com/Khazar-System-Distribution/khazar
-cd khazar
-make all                                    # 0 error, 94+ test
-sudo bash distro/install.sh                 # Hamısını quraşdırır
-systemctl enable khazar.target --now        # Daemon-u başladır
-kha "firefox aç"                            # İlk əmr!
+make all                              # 0 errors, 94+ tests pass
+sudo bash distro/install.sh
+systemctl enable khazar.target --now
+kha "open firefox"
 ```
 
 ---
 
-## Developer Sənədləri
+## Developer Documentation
 
-### Repo Strukturu
+### Repository Structure
 
 ```
-khazar/                                 # Monorepo — 167 fayl, 17K+ sətir
+khazar/                                 # Monorepo — 200+ files, 19K+ lines
 ├── sdk/                                # Agent SDK (IPC, logger, events)
-│   ├── include/common.h                # Ortaq tip + sabit
+│   ├── include/common.h                # Shared types and constants
 │   ├── ipc/                            # Unix socket client+server (epoll)
 │   ├── agent/                          # Agent lifecycle (register, heartbeat)
 │   └── events/                         # In-process pub/sub
-├── components/                         # Server komponentlər
+├── components/                         # Core services
 │   ├── orchestrator/                   # Tier 0+1 router (v0.3)
-│   │   ├── registry/                   # Agent qeydiyyatı + capability lookup
+│   │   ├── registry/                   # Agent registration + capability lookup
 │   │   ├── rule_client/                # Rule Engine IPC client
 │   │   ├── policy_client/              # Policy Engine IPC client
 │   │   ├── agent_client/               # Agent dispatch (socket connect+send)
 │   │   └── intent_client/              # Tier 1 classifier client
-│   ├── rule-engine/                    # Deterministik intent təyini (49 test)
-│   │   ├── cache/                      # LRU keş (O(1), 256 əmr)
-│   │   ├── matcher/                    # POSIX regex matching (1024 rule)
-│   │   ├── tokens/                     # Açar söz lookup + scoring
-│   │   ├── intent/                     # Tam əmr → intent cədvəli (2048 entry)
-│   │   ├── alias/                      # Alternativ ad həlli (1024 alias)
-│   │   └── fuzzy/                      # Levenshtein təxmini uyğunluq
-│   ├── policy-engine/                  # Təhlükəsizlik siyasəti (13 qayda)
-│   │   └── policy/                     # fnmatch agent+capability matching
+│   ├── rule-engine/                    # Deterministic intent resolver (49 tests)
+│   │   ├── cache/                      # LRU cache (O(1), 256 entries)
+│   │   ├── matcher/                    # POSIX regex matching (1024 rules)
+│   │   ├── tokens/                     # Keyword lookup + scoring
+│   │   ├── intent/                     # Exact intent table (2048 entries)
+│   │   ├── alias/                      # Synonym resolution (1024 aliases)
+│   │   └── fuzzy/                      # Levenshtein fuzzy matching
+│   ├── policy-engine/                  # Security policy (13 rules, fnmatch)
 │   ├── model-runtime/                  # LLM inference server
-│   │   └── inference/                  # Mock + llama.cpp stub
-│   └── intent-classifier/              # Tier 1 LLM fallback
-├── agents/                             # 5 agent
-│   ├── desktop-agent/                  # fork+exec tətbiq açma
-│   ├── package-agent/                  # apt/pacman paket idarəsi
-│   ├── network-agent/                  # nmcli WiFi/ethernet
-│   ├── power-agent/                    # systemctl/loginctl enerji
-│   └── audio-agent/                    # pactl səs idarəsi
-├── protocol/                           # IPC kontraktları (JSON Schema)
-├── distro/                             # Distro qurma alətləri
+│   │   └── inference/                  # Mock backend + llama.cpp stub
+│   └── intent-classifier/              # Tier 1 LLM fallback + 32 keywords
+├── agents/                             # 5 agents
+│   ├── desktop-agent/                  # fork+exec application launcher
+│   ├── package-agent/                  # apt/pacman package management
+│   ├── network-agent/                  # nmcli WiFi/ethernet control
+│   ├── power-agent/                    # systemctl/loginctl power control
+│   └── audio-agent/                    # pactl audio control
+├── protocol/                           # IPC contracts (JSON Schema, RPC)
+├── distro/                             # Distribution build system
 │   ├── bootc/Containerfile             # OS image definition
-│   ├── gnome/                          # GNOME özəlləşdirmə
-│   │   ├── theme/Khazar-dark/          # Shell + GTK4 CSS
-│   │   ├── extensions/                 # Panel ikonu + Ctrl+Space
-│   │   └── settings/                   # GSettings override
-│   ├── branding/                       # GRUB, Plymouth, GDM, ikonlar
-│   ├── systemd/                        # 10 systemd unit + khazar.target
+│   ├── gnome/                          # GNOME customization
+│   │   ├── theme/Khazar-dark/          # Shell + GTK4 CSS themes
+│   │   ├── extensions/                 # Panel icon + Ctrl+Space
+│   │   └── settings/                   # GSettings overrides
+│   ├── branding/                       # GRUB, Plymouth, GDM, icons
+│   ├── systemd/                        # 10 systemd units + khazar.target
 │   ├── iso/                            # ISO builder
-│   ├── installer/                      # Setup + first-boot wizard
-│   ├── cli/kha                         # İstifadəçi CLI
-│   └── rpm/khazar.spec                 # RPM spec
-└── docs/                               # Əlavə sənədlər
+│   └── cli/kha                         # User-facing CLI tool
+└── .github/workflows/build.yml         # CI pipeline
 ```
 
 ### Build Status
 
-| Komponent | Fayl sayı | Build | Test | Dil |
-|-----------|----------|-------|------|-----|
-| `sdk` | 14 | 0 error | 22/22 ✅ | C11 |
-| `orchestrator` | 20 | 0 error | — | C11 |
-| `rule-engine` | 26 | 0 warning | 49/49 ✅ | C11 |
-| `policy-engine` | 11 | 0 error | 7/7 ✅ | C11 |
-| `model-runtime` | 11 | 0 error | 4/4 ✅ | C11 |
-| `intent-classifier` | 7 | 0 error | 12/12 ✅ | C11 |
-| `desktop-agent` | 4 | 0 error | — | C11 |
-| `package-agent` | 3 | 0 error | — | C11 |
-| `network-agent` | 3 | 0 error | — | C11 |
-| `power-agent` | 3 | 0 error | — | C11 |
-| `audio-agent` | 3 | 0 error | — | C11 |
-| **CƏM** | **105** | **0 error** | **94/94 ✅** | |
+| Component | Files | Build | Tests |
+|-----------|-------|-------|-------|
+| `sdk` | 14 | 0 errors | 22/22 |
+| `orchestrator` | 20 | 0 errors | -- |
+| `rule-engine` | 26 | 0 warnings | 49/49 |
+| `policy-engine` | 11 | 0 errors | 7/7 |
+| `model-runtime` | 11 | 0 errors | 4/4 |
+| `intent-classifier` | 7 | 0 errors | 12/12 |
+| `desktop-agent` | 4 | 0 errors | -- |
+| `package-agent` | 3 | 0 errors | -- |
+| `network-agent` | 3 | 0 errors | -- |
+| `power-agent` | 3 | 0 errors | -- |
+| `audio-agent` | 3 | 0 errors | -- |
+| **TOTAL** | **105** | **0 errors** | **94/94** |
 
-### Build Komandaları
+### Build Commands
 
 ```bash
-make all              # Bütün 11 komponenti qur
-make sdk              # Yalnız SDK
-make components       # Yalnız server komponentlər
-make agents           # Yalnız agentlər
-make -C sdk test      # SDK testləri (22)
-make -C distro build  # Distro image qur
-make install          # Sistemə quraşdır
+make all              # Build all 11 components
+make sdk              # SDK only
+make components       # Core services only
+make agents           # Agents only
+make -C sdk test      # SDK tests (22)
+make install          # System-wide install
 ```
 
-### SDK API (Yeni agent yazmaq üçün)
+### SDK API Reference
 
 ```c
 #include "sdk/include/common.h"      // request_t, response_t, agent_info_t
 #include "sdk/logger/logger.h"       // log_info(), log_error(), log_fatal()
-#include "sdk/ipc/ipc.h"             // ipc_server_init(), ipc_server_start(), ipc_server_send()
+#include "sdk/ipc/ipc.h"             // ipc_server_init(), ipc_server_send()
 #include "sdk/protocol/protocol.h"   // protocol_build_response(), protocol_parse_request()
 ```
 
-**Agent yazmaq — 5 dəqiqəlik tutorial:**
+**Writing an Agent (5-minute tutorial):**
 
 ```c
 #define _GNU_SOURCE
@@ -355,12 +342,11 @@ static void handler(int client_fd, const char *data, size_t len, void *ctx) {
     (void)ctx; (void)len;
     char out[4096];
 
-    // Parse request
+    // Parse request from JSON
     request_t req = {0};
-    // ... JSON parse ...
 
-    // Execute
-    system("firefox");  // əsl agentdə fork+exec
+    // Execute the command
+    system("firefox");
 
     // Respond
     snprintf(out, sizeof(out),
@@ -372,93 +358,93 @@ static void handler(int client_fd, const char *data, size_t len, void *ctx) {
 
 int main(void) {
     logger_init(NULL, LOG_INFO);
-    signal(SIGINT, [](int){ running = false; });
 
-    // 1. Register with orchestrator
-    // ... send JSON registration ...
-
-    // 2. Start IPC server
+    // Start IPC server
     ipc_server_t *srv = ipc_server_init("/run/my-agent.sock", 64);
     log_info("agent", "listening on /run/my-agent.sock");
 
-    // 3. Enter event loop
     ipc_server_start(srv, handler, NULL);
-
     ipc_server_cleanup(srv);
     logger_cleanup();
     return 0;
 }
 ```
 
-> Kompilyasiya: `gcc -std=c11 -O2 my-agent.c -I/path/to/sdk/include -I/path/to/sdk -L/path/to/sdk -lai-sdk -pthread -o my-agent`
+Compile:
+```bash
+gcc -std=c11 -O2 my-agent.c \
+    -I/path/to/khazar/sdk/include -I/path/to/khazar/sdk \
+    -L/path/to/khazar/sdk -lai-sdk -pthread -o my-agent
+```
 
 ---
 
-## GNOME Özəlləşdirmə
+## GNOME Customization
 
-KhazarOS GNOME-u tamamilə özünə uyğunlaşdırır:
+KhazarOS ships with a complete GNOME visual identity:
 
-| Element | Default GNOME | KhazarOS |
-|---------|--------------|----------|
-| Shell tema | Adwaita | **Khazar Dark** (tünd göy + qırmızı vurğu) |
-| GTK4 tema | Adwaita | Khazar Dark |
-| İkonlar | Adwaita | Papirus-Dark |
-| Panel | Standart | AI Assistant ikonu + "AI" indikatoru |
-| Shortcut | — | Ctrl+Space → komanda paneli |
-| Divar kağızı | Fedora default | KhazarOS (tünd abstrakt) |
-| Boot ekranı | Fedora Plymouth | KhazarOS Plymouth (qırmızı loqo) |
-| GRUB | Fedora | KhazarOS (dark theme) |
-| Login (GDM) | Fedora | KhazarOS (dark + qırmızı) |
-| Şrift | Cantarell | DejaVu Sans + JetBrains Mono |
-| Rəng sxemi | Açıq | Tünd (prefer-dark) |
+| Element | Stock GNOME | KhazarOS |
+|---------|------------|----------|
+| Shell theme | Adwaita | Khazar Dark (navy + red) |
+| GTK4 theme | Adwaita | Khazar Dark |
+| Icons | Adwaita | Papirus-Dark |
+| Panel | Default | AI Assistant icon + indicator |
+| Shortcut | None | Ctrl+Space (command input) |
+| Wallpaper | Fedora default | KhazarOS dark abstract |
+| Boot screen | Fedora Plymouth | KhazarOS (red logo pulse) |
+| GRUB | Fedora | KhazarOS dark theme |
+| Login (GDM) | Fedora | KhazarOS (dark + red accent) |
+| Font | Cantarell | DejaVu Sans + JetBrains Mono |
+| Color scheme | Light | Dark (prefer-dark) |
 
-**Rəng palitrası:**
+**Color palette:**
 
-| Rəng | Hex | İstifadə |
-|------|-----|---------|
-| Tünd göy | `#1a1a2e` | Əsas fon, pəncərə arxa planı |
-| Orta göy | `#16213e` | Panel, headerbar |
-| Dərin mavi | `#0f3460` | Kartlar, sidebar, vurğu fonu |
-| **Khazar qırmızı** | `#e94560` | Vurğu, düymə, seçim, link |
-| Açıq mətn | `#e0e0e0` | Əsas mətn |
-| Solğun mətn | `#8888aa` | İkinci dərəcəli mətn |
-
----
-
-## Töhfə
-
-KhazarOS açıq qaynaqdır — istənilən töhfəyə açıqdır.
-
-**Necə töhfə vermək olar:**
-
-1. Fork et
-2. Branch yarat: `git checkout -b feature/yeni-agent`
-3. Dəyişiklik et
-4. Test et: `make -C sdk test`
-5. Commit: `git commit -m "feat: yeni agent"`
-6. Push + PR aç
-
-**Roadmap:**
-
-| Versiya | Hədəf |
-|---------|-------|
-| `v0.1` ✅ | SDK + 5 komponent + 5 agent + Policy + GNOME tema |
-| `v0.2` | Flatpak agent, GNOME 47 dəstəyi, notification-center |
-| `v0.3` | Səs tanıma (Whisper.cpp), Azərbaycan dil modeli |
-| `v0.5` | ARM64 (Raspberry Pi 5), enerji optimizasiyası |
-| `v1.0` | Stabil buraxılış, LTS dəstək |
+| Color | Hex | Usage |
+|-------|-----|-------|
+| Dark navy | `#1a1a2e` | Primary background |
+| Medium navy | `#16213e` | Panel, headerbar |
+| Deep blue | `#0f3460` | Cards, sidebars |
+| Khazar red | `#e94560` | Accent, buttons, selections |
+| Light text | `#e0e0e0` | Primary text |
+| Dim text | `#8888aa` | Secondary text |
 
 ---
 
-## Lisensiya
+## Testing
+
+See [TESTING.md](TESTING.md) for detailed instructions on testing KhazarOS in:
+- QEMU/KVM (fastest)
+- VirtualBox (free, cross-platform)
+- Physical hardware (USB boot)
+
+---
+
+## Contributing
+
+KhazarOS is open source and welcomes contributions. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+**Quick start:**
+
+1. Fork the repository
+2. Create a branch: `git checkout -b feature/new-agent`
+3. Make changes and test: `make -C sdk test`
+4. Commit: `git commit -m "feat: description"`
+5. Push and open a Pull Request
+
+### Roadmap
+
+| Version | Target |
+|---------|--------|
+| `0.1.0` | SDK + 5 components + 5 agents + Policy + GNOME theme |
+| `0.2.0` | Flatpak agent, GNOME 47, notification center |
+| `0.3.0` | Voice recognition (Whisper.cpp), Azerbaijani LM |
+| `0.5.0` | ARM64 (Raspberry Pi 5), power optimization |
+| `1.0.0` | Stable release, LTS support |
+
+---
+
+## License
 
 [GNU General Public License v3.0](LICENSE)
 
-Copyright © 2025 Khazar System Distribution
-
----
-
-<p align="center">
-  <sub>Built with C11 • Fedora Silverblue • GNOME • systemd</sub><br>
-  <sub>github.com/Khazar-System-Distribution/khazar</sub>
-</p>
+Copyright 2025 Khazar System Distribution

@@ -1,0 +1,71 @@
+# Build KhazarOS ISO and create GitHub Release
+
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/fedora/fedora:40
+      options: --privileged
+
+    steps:
+      - name: Install build tools
+        run: |
+          dnf install -y podman git make gcc
+
+      - uses: actions/checkout@v4
+
+      - name: Build SDK
+        run: make sdk
+
+      - name: Test SDK
+        run: make -C sdk test
+
+      - name: Build all components
+        run: make all
+
+      - name: Build bootc container
+        run: |
+          podman build \
+            --tag khazaros:${GITHUB_REF_NAME#v} \
+            -f distro/bootc/Containerfile \
+            .
+
+      - name: Export as tarball
+        run: |
+          podman save khazaros:${GITHUB_REF_NAME#v} | \
+            gzip > khazaros-${GITHUB_REF_NAME#v}-x86_64.tar.gz
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: KhazarOS ${{ github.ref_name }}
+          body: |
+            ## KhazarOS ${{ github.ref_name }}
+
+            AI-powered Linux desktop based on Fedora Silverblue.
+
+            ### Download
+            - `khazaros-${{ github.ref_name }}-x86_64.tar.gz` — Container image (podman load)
+            - `khazaros-${{ github.ref_name }}-x86_64.iso` — Bootable ISO (coming soon)
+
+            ### Quick Start
+            ```bash
+            podman load -i khazaros-${{ github.ref_name }}-x86_64.tar.gz
+            podman run -it khazaros:${{ github.ref_name }}
+            ```
+
+            See [TESTING.md](TESTING.md) for QEMU/VirtualBox/hardware testing guides.
+          files: |
+            khazaros-*.tar.gz
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
