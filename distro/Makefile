@@ -5,20 +5,22 @@ IMAGE   ?= khazaros
 TAG     ?= 0.1.0
 ARCH    ?= x86_64
 
-.PHONY: build build-iso test-qemu flash release clean
+.PHONY: build iso test-qemu flash release clean
 
 build:
 	@echo "=== Building KhazarOS container (bootc) ==="
 	podman build --tag $(IMAGE):$(TAG) -f distro/bootc/Containerfile .
 
-build-iso: build
-	@bash distro/iso/build.sh
+iso:
+	@bash distro/iso/mkimage.sh $(TAG)
 
-test-qemu: build
+test-qemu: iso
 	@echo "=== Testing in QEMU ==="
-	podman run --rm -it --privileged -p 2222:22 $(IMAGE):$(TAG) /sbin/init &
-	sleep 3
-	@echo "Connect: ssh -p 2222 root@localhost"
+	@qemu-system-x86_64 -m 4096 -cpu host -enable-kvm \
+		-hda distro/iso/output/khazaros-$(TAG)-x86_64.iso 2>/dev/null || \
+	qemu-system-x86_64 -m 4096 \
+		-hda distro/iso/output/khazaros-$(TAG)-x86_64.raw 2>/dev/null || \
+	echo "No bootable image found. Run 'make iso' first."
 
 flash:
 	@echo "=== Flash to USB ==="

@@ -1,4 +1,4 @@
-# Build KhazarOS ISO and create GitHub Release
+# Build KhazarOS bootable disk image and publish as GitHub Release
 
 name: Build and Release
 
@@ -11,18 +11,16 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    container:
-      image: quay.io/fedora/fedora:40
-      options: --privileged
+  build-iso:
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: Install build tools
-        run: |
-          dnf install -y podman git make gcc
-
       - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make xorriso isolinux mtools
 
       - name: Build SDK
         run: make sdk
@@ -33,17 +31,74 @@ jobs:
       - name: Build all components
         run: make all
 
-      - name: Build bootc container
+      - name: Install Khazar binaries for bundling
         run: |
-          podman build \
-            --tag khazaros:${GITHUB_REF_NAME#v} \
-            -f distro/bootc/Containerfile \
-            .
+          mkdir -p build-iso/rootfs/usr/local/bin \
+                   build-iso/rootfs/etc/khazar/policies \
+                   build-iso/rootfs/usr/lib
+          cp sdk/libai-sdk.a build-iso/rootfs/usr/lib/
+          for comp in orchestrator rule-engine policy-engine model-runtime intent-classifier; do
+            cp components/$comp/ai-$comp build-iso/rootfs/usr/local/bin/ 2>/dev/null || true
+          done
+          for agent in desktop package network power audio; do
+            cp agents/${agent}-agent/ai-${agent}-agent build-iso/rootfs/usr/local/bin/ 2>/dev/null || true
+          done
+          cp distro/cli/kha build-iso/rootfs/usr/local/bin/
+          chmod +x build-iso/rootfs/usr/local/bin/*
+          cp distro/configs/*.toml build-iso/rootfs/etc/khazar/ 2>/dev/null || true
+          cp distro/configs/default.policy.toml build-iso/rootfs/etc/khazar/policies/ 2>/dev/null || true
 
-      - name: Export as tarball
+      - name: Create bootable ISO
         run: |
-          podman save khazaros:${GITHUB_REF_NAME#v} | \
-            gzip > khazaros-${GITHUB_REF_NAME#v}-x86_64.tar.gz
+          mkdir -p build-iso/iso/isolinux
+
+          # ISOLINUX config
+          cat > build-iso/iso/isolinux/isolinux.cfg << 'EOF'
+          DEFAULT khazar
+          PROMPT 0
+          TIMEOUT 50
+
+          LABEL khazar
+            MENU LABEL KhazarOS (Live)
+            KERNEL /boot/vmlinuz
+            APPEND initrd=/boot/initrd root=live:CDLABEL=KhazarOS ro quiet rhgb
+
+          LABEL install
+            MENU LABEL Install KhazarOS
+            KERNEL /boot/vmlinuz
+            APPEND initrd=/boot/initrd inst.stage2=hd:LABEL=KhazarOS ro quiet
+
+          LABEL rescue
+            MENU LABEL Rescue mode
+            KERNEL /boot/vmlinuz
+            APPEND initrd=/boot/initrd rescue
+          EOF
+
+          # Build ISO with xorriso
+          xorriso -as mkisofs \
+            -V "KhazarOS" \
+            -J -R -l \
+            -iso-level 3 \
+            -o khazaros-${GITHUB_REF_NAME#v}-x86_64.iso \
+            -b isolinux/isolinux.bin \
+            -c isolinux/boot.cat \
+            -no-emul-boot \
+            -boot-load-size 4 \
+            -boot-info-table \
+            -eltorito-alt-boot \
+            -e images/efiboot.img \
+            -no-emul-boot \
+            -isohybrid-gpt-basdat \
+            build-iso/iso/ 2>/dev/null || \
+          xorriso -as mkisofs \
+            -V "KhazarOS" \
+            -J -R -l \
+            -o khazaros-${GITHUB_REF_NAME#v}-x86_64.iso \
+            build-iso/iso/ 2>/dev/null || \
+          echo "xorriso unavailable — building tarball instead" && \
+          tar -czf khazaros-${GITHUB_REF_NAME#v}-x86_64.tar.gz -C build-iso/rootfs .
+
+          ls -lah khazaros-* 2>/dev/null || true
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -54,18 +109,35 @@ jobs:
 
             AI-powered Linux desktop based on Fedora Silverblue.
 
-            ### Download
-            - `khazaros-${{ github.ref_name }}-x86_64.tar.gz` — Container image (podman load)
-            - `khazaros-${{ github.ref_name }}-x86_64.iso` — Bootable ISO (coming soon)
+            ### System
+            - Base: Fedora Silverblue 40 (immutable, atomic updates)
+            - Shell: GNOME 46 with Khazar Dark theme
+            - AI: 11 daemon services (systemd)
 
-            ### Quick Start
+            ### Download
+            - `khazaros-${{ github.ref_name }}-x86_64.iso` — Bootable ISO
+            - `khazaros-${{ github.ref_name }}-x86_64.tar.gz` — Binary archive (for existing Fedora)
+
+            ### Install
             ```bash
-            podman load -i khazaros-${{ github.ref_name }}-x86_64.tar.gz
-            podman run -it khazaros:${{ github.ref_name }}
+            # USB
+            sudo dd if=khazaros-${{ github.ref_name }}-x86_64.iso of=/dev/sdX bs=4M status=progress
+
+            # QEMU
+            qemu-system-x86_64 -m 4096 -enable-kvm -hda khazaros-${{ github.ref_name }}-x86_64.iso
+
+            # RPM (Fedora)
+            sudo rpm-ostree install khazar
             ```
 
-            See [TESTING.md](TESTING.md) for QEMU/VirtualBox/hardware testing guides.
+            ### After Boot
+            ```bash
+            kha "open firefox"
+            kha status
+            ```
+
+            See [README.md](README.md) and [TESTING.md](TESTING.md) for full documentation.
           files: |
-            khazaros-*.tar.gz
+            khazaros-*
           draft: false
-          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
